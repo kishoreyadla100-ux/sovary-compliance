@@ -23,19 +23,70 @@ export default function AdminPage() {
 
   const load = () => getAllUsers().then(u => setUsers(u));
 
+  // ✅ NEW: Approve CA function
   const approve = async uid => {
     setUpdating(uid);
+    const u = users.find(x => x.id === uid);
+    
+    // Update CA status to active
     await updateUser(uid, {
-      status:     "trial",
-      trialStart: new Date(),
-      trialEnd:   new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+      status:     "active",
       approvedAt: new Date(),
     });
+    
+    // Send approval email via script
+    try {
+      await fetch("/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "APPROVAL_EMAIL",
+          email: u.email,
+          firmName: "APPROVED",
+          phone: u.name
+        })
+      });
+    } catch (e) {
+      console.log("Email send error (non-blocking):", e);
+    }
+    
     await load();
     setUpdating(null);
-    const u   = users.find(x => x.id === uid);
-    const msg = encodeURIComponent(`✅ Hello ${u?.name},\n\nYour SOVARY Compliance account has been approved!\n\nYou have 3 weeks free trial.\nLogin: https://sovary-compliance.vercel.app\n\nRegards,\nSOVARY Team`);
-    window.open(`https://wa.me/91${u?.phone || ""}?text=${msg}`, "_blank");
+    alert(`✅ ${u?.name} approved!`);
+  };
+
+  // ✅ NEW: Reject CA function
+  const reject = async uid => {
+    setUpdating(uid);
+    const u = users.find(x => x.id === uid);
+    
+    if (!confirm(`Are you sure you want to reject ${u?.name}?`)) {
+      setUpdating(null);
+      return;
+    }
+    
+    // Delete CA account
+    await updateUser(uid, { status: "rejected" });
+    
+    // Send rejection email via script
+    try {
+      await fetch("/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "REJECTION_EMAIL",
+          email: u.email,
+          firmName: "REJECTED",
+          phone: u.name
+        })
+      });
+    } catch (e) {
+      console.log("Email send error (non-blocking):", e);
+    }
+    
+    await load();
+    setUpdating(null);
+    alert(`❌ ${u?.name} rejected!`);
   };
 
   const setStatus = async (uid, status) => {
@@ -60,6 +111,7 @@ export default function AdminPage() {
     trial:   "var(--blue)",
     pending: "var(--gold)",
     expired: "var(--red)",
+    rejected: "var(--red)",
     admin:   "#a78bfa",
   };
 
@@ -103,10 +155,16 @@ export default function AdminPage() {
           {u.role !== "admin" && (
             <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
               {u.status === "pending" && (
-                <button onClick={() => approve(u.id)} disabled={updating === u.id}
-                  style={{ padding:"4px 10px", background:"rgba(126,186,90,0.1)", color:"var(--accent)", border:"1px solid rgba(126,186,90,0.3)", borderRadius:6, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
-                  {updating === u.id ? <Spinner size={10} /> : "✓ Approve"}
-                </button>
+                <>
+                  <button onClick={() => approve(u.id)} disabled={updating === u.id}
+                    style={{ padding:"4px 10px", background:"rgba(126,186,90,0.1)", color:"var(--accent)", border:"1px solid rgba(126,186,90,0.3)", borderRadius:6, fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+                    {updating === u.id ? <Spinner size={10} /> : "✓ Approve"}
+                  </button>
+                  <button onClick={() => reject(u.id)} disabled={updating === u.id}
+                    style={{ padding:"4px 10px", background:"rgba(224,92,92,0.08)", color:"var(--red)", border:"1px solid rgba(224,92,92,0.25)", borderRadius:6, fontSize:11, cursor:"pointer" }}>
+                    ✗ Reject
+                  </button>
+                </>
               )}
               {u.status === "trial" && (
                 <button onClick={() => setStatus(u.id, "active")} disabled={updating === u.id}
@@ -126,7 +184,7 @@ export default function AdminPage() {
                   Reactivate
                 </button>
               )}
-              {/* WhatsApp */}
+              {/* Email */}
               {u.email && (
                 <a href={`mailto:${u.email}`} style={{ padding:"4px 10px", background:"rgba(90,184,224,0.1)", color:"var(--blue)", border:"1px solid rgba(90,184,224,0.3)", borderRadius:6, fontSize:11, textDecoration:"none" }}>
                   📧
@@ -166,7 +224,7 @@ export default function AdminPage() {
               ⏳ {pending.length} account(s) waiting for approval
             </div>
             <div style={{ fontSize:12, color:"var(--muted)" }}>
-              Review and approve below. CA will be notified via WhatsApp.
+              Review below. Click ✓ Approve to activate or ✗ Reject to decline.
             </div>
           </div>
         )}
