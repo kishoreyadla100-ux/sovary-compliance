@@ -11,17 +11,21 @@ export default function AppShell({ children }) {
   const [firm, setFirm] = useState(null);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-      if (userData?.status === "pending") {
-        router.push("/pending");
-        return;
-      }
+  if (!loading) {
+    if (!user) {
+      router.push("/login");
+      return;
     }
-  }, [user, userData, loading]);
+    if (userData?.status === "pending") {
+      router.push("/pending");
+      return;
+    }
+    if (userData?.status === "expired" && userData?.role !== "admin") {
+      router.push("/pricing");
+      return;
+    }
+  }
+}, [user, userData, loading]);
 
   useEffect(() => {
     if (user) {
