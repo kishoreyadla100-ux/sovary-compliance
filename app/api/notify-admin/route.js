@@ -1,91 +1,39 @@
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function POST(req) {
   try {
     const { name, email, firmName = "", phone = "" } = await req.json();
-    const SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
-    // Validate input
     if (!name || !email) {
-      return Response.json(
-        { success: false, error: "Name and email required" },
-        { status: 400 }
-      );
+      return Response.json({ success: false, error: "Name and email required" }, { status: 400 });
     }
 
-    // Check if script URL is configured
-    if (!SCRIPT_URL) {
-      console.warn("GOOGLE_SCRIPT_URL not configured in environment variables");
-      return Response.json(
-        { success: false, error: "Notification service not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Call Google Apps Script
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: name.trim(),
-        email: email.trim(),
-        firmName: firmName.trim(),
-        phone: phone.trim(),
-        timestamp: new Date().toISOString(),
-      }),
+    await resend.emails.send({
+      from: "onboarding@resend.dev",
+      to: "kishoreyadla100@gmail.com",
+      subject: `New CA Signup: ${name}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px;max-width:600px;">
+          <h2 style="color:#7eba5a;">🆕 New CA Signup</h2>
+          <p><b>Name:</b> ${name}</p>
+          <p><b>Email:</b> ${email}</p>
+          <p><b>Firm:</b> ${firmName || "Not provided"}</p>
+          <p><b>Phone:</b> ${phone || "Not provided"}</p>
+          <a href="https://sovary-compliance.vercel.app/admin" 
+             style="display:block;background:#7eba5a;color:white;padding:16px;text-decoration:none;border-radius:10px;font-size:18px;font-weight:bold;text-align:center;margin:20px 0;">
+            ✅ APPROVE CA NOW
+          </a>
+        </div>
+      `
     });
 
-    // Handle response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Script API error ${response.status}:`, errorText);
-      return Response.json(
-        { success: false, error: "Failed to send notification" },
-        { status: response.status }
-      );
-    }
-
-    // Parse response
-    let result;
-    try {
-      result = await response.json();
-    } catch (parseError) {
-      console.error("Failed to parse script response:", parseError);
-      return Response.json(
-        { success: false, error: "Invalid response from notification service" },
-        { status: 500 }
-      );
-    }
-
-    // Check if script succeeded
-    if (!result.success) {
-      console.error("Script reported error:", result.error);
-      return Response.json(
-        { success: false, error: result.error || "Script failed" },
-        { status: 500 }
-      );
-    }
-
-    console.log(`Notification sent for ${name} (${email})`);
-    return Response.json({ 
-      success: true, 
-      message: "Notification sent",
-      sentAt: new Date().toISOString(),
-    });
+    console.log(`Email sent for ${name} (${email})`);
+    return Response.json({ success: true, message: "Notification sent" });
 
   } catch (error) {
-    console.error("Notification route error:", error.message);
-    return Response.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    console.error("Resend error:", error.message);
+    return Response.json({ success: false, error: error.message }, { status: 500 });
   }
-}
-
-export async function OPTIONS(req) {
-  return Response.json({}, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
 }

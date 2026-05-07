@@ -21,6 +21,7 @@ const MOBILE_NAV = [
   { href: "/deadlines",     icon: "◷", label: "Deadlines" },
   { href: "/notifications", icon: "🔔", label: "Alerts"   },
   { href: "/ai",            icon: "✦", label: "AI"        },
+  { href: "/admin",         icon: "⬡", label: "Admin"     },
 ];
 
 export default function Sidebar({ firm }) {
@@ -59,10 +60,10 @@ export default function Sidebar({ firm }) {
         zIndex: 40, overflowY: "auto",
       }} className="hide-mobile">
 
-        {/* Logo */}
+        {/* Logo - Always SOVARY Compliance */}
         <div style={{ padding: "22px 20px 16px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ fontFamily: "DM Serif Display, serif", fontSize: 22, color: "var(--accent)" }}>
-            {firm?.firmName || "SOVARY"}
+            SOVARY
           </div>
           <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "JetBrains Mono, monospace", marginTop: 2, letterSpacing: "0.12em" }}>
             COMPLIANCE
