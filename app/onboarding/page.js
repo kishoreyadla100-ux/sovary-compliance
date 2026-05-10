@@ -16,19 +16,37 @@ export default function OnboardingPage() {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSubmit = async () => {
-    if (!form.firmName || !form.phone) {
-      alert("Firm name and phone are required.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const { saveFirm } = await import("@/lib/firestore");
-      await saveFirm(user.uid, form);
-    } catch (e) {
-      console.log("Firestore error, continuing anyway");
-    }
-    router.push("/dashboard");
-  };
+  if (!form.firmName || !form.phone) {
+    alert("Firm name and phone are required.");
+    return;
+  }
+  setSaving(true);
+  try {
+    const { saveFirm } = await import("@/lib/firestore");
+    await saveFirm(user.uid, form);
+
+    // Send notification to admin with full firm details
+    await fetch("https://sovary-compliance.vercel.app/api/notify-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name:     user.displayName || user.email,
+        email:    user.email,
+        firmName: form.firmName,
+        phone:    form.phone,
+        city:     form.city,
+        gst:      form.gst,
+      }),
+    });
+
+  } catch (e) {
+    console.log("Error:", e.message);
+  }
+
+  // Go to pending page NOT dashboard
+  router.push("/pending");
+  setSaving(false);
+};
 
   const inputStyle = {
     width: "100%", background: "#1a2214",
