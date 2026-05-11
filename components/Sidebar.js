@@ -12,7 +12,6 @@ const NAV = [
   { href: "/invoices",      icon: "◫", label: "Invoices"       },
   { href: "/reports",       icon: "◧", label: "Reports"        },
   { href: "/ai",            icon: "✦", label: "AI Assistant"   },
-  { href: "/pricing", icon: "💳", label: "Pricing" },
   { href: "/settings",      icon: "⚙", label: "Settings"       },
 ];
 
@@ -22,7 +21,14 @@ const MOBILE_NAV = [
   { href: "/deadlines",     icon: "◷", label: "Deadlines" },
   { href: "/notifications", icon: "🔔", label: "Alerts"   },
   { href: "/ai",            icon: "✦", label: "AI"        },
-  { href: "/admin",         icon: "⬡", label: "Admin"     },
+];
+
+const MOBILE_NAV_ADMIN = [
+  { href: "/dashboard",     icon: "◈", label: "Home"     },
+  { href: "/admin",         icon: "⬡", label: "Admin"    },
+  { href: "/notifications", icon: "🔔", label: "Alerts"  },
+  { href: "/ai",            icon: "✦", label: "AI"       },
+  { href: "/settings",      icon: "⚙", label: "Settings" },
 ];
 
 export default function Sidebar({ firm }) {
@@ -61,7 +67,7 @@ export default function Sidebar({ firm }) {
         zIndex: 40, overflowY: "auto",
       }} className="hide-mobile">
 
-        {/* Logo - Always SOVARY Compliance */}
+        {/* Logo */}
         <div style={{ padding: "22px 20px 16px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ fontFamily: "DM Serif Display, serif", fontSize: 22, color: "var(--accent)" }}>
             SOVARY
@@ -114,7 +120,7 @@ export default function Sidebar({ firm }) {
         display: "flex", justifyContent: "space-around",
         padding: "8px 0 14px", zIndex: 40,
       }} className="show-mobile">
-        {MOBILE_NAV.map(item => {
+        {(isAdmin ? MOBILE_NAV_ADMIN : MOBILE_NAV).map(item => {
           const active = pathname === item.href;
           return (
             <button key={item.href} onClick={() => router.push(item.href)} style={{
