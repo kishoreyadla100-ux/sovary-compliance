@@ -11,35 +11,41 @@ export default function AppShell({ children }) {
   const [firm, setFirm] = useState(null);
 
   useEffect(() => {
-  if (!loading) {
-    if (!user) {
-      router.push("/login");
-      return;
+    if (!loading) {
+      // Not logged in → go to login
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      // Pending approval → go to pending
+      if (userData?.status === "pending") {
+        router.push("/pending");
+        return;
+      }
+      // Not onboarded → go to onboarding
+      if (userData?.role === "ca" && !userData?.onboarded) {
+        router.push("/onboarding");
+        return;
+      }
+      // Trial expired → go to pricing
+      if (userData?.status === "expired" && userData?.role !== "admin") {
+        router.push("/pricing");
+        return;
+      }
     }
-    if (userData?.status === "pending") {
-      router.push("/pending");
-      return;
-    }
-    if (userData?.status === "expired" && userData?.role !== "admin") {
-      router.push("/pricing");
-      return;
-    }
-  }
-}, [user, userData, loading]);
+  }, [user, userData, loading]);
 
   useEffect(() => {
     if (user) {
       import("@/lib/firestore").then(({ getFirm }) => {
         getFirm(user.uid)
-          .then(f => {
-            if (f) setFirm(f);
-            else setFirm({ firmName: "SOVARY" });
-          })
-          .catch(() => setFirm({ firmName: "SOVARY" }));
+          .then(f => setFirm({ ...(f || {}), firmName: "SOVARY Compliance" }))
+          .catch(() => setFirm({ firmName: "SOVARY Compliance" }));
       });
     }
   }, [user]);
 
+  // Show spinner while loading
   if (loading || !user || !userData) {
     return (
       <div style={{
@@ -51,7 +57,11 @@ export default function AppShell({ children }) {
     );
   }
 
+  // Block pending users
   if (userData?.status === "pending") return null;
+
+  // Block unonboarded users
+  if (userData?.role === "ca" && !userData?.onboarded) return null;
 
   // Trial expiry check
   const isExpired = userData?.status === "expired" ||
@@ -61,6 +71,9 @@ export default function AppShell({ children }) {
           ? userData.trialEnd.seconds * 1000
           : userData.trialEnd
       ));
+
+  // Block expired users
+  if (isExpired && userData?.role !== "admin") return null;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
