@@ -1,11 +1,11 @@
 "use client";
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function OnboardingPage() {
-  const { user } = useAuth();
-  const router   = useRouter();
+  const { user, userData, logout } = useAuth();
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     firmName: "", address: "", city: "",
@@ -13,40 +13,61 @@ export default function OnboardingPage() {
     gst: "", pan: "", whatsapp: ""
   });
 
+  // ✅ Redirect checks
+  useEffect(() => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    // Admin should never see onboarding
+    if (userData?.role === "admin") {
+      router.push("/dashboard");
+      return;
+    }
+    // Already onboarded → go to pending or dashboard
+    if (userData?.onboarded) {
+      if (userData?.status === "pending") {
+        router.push("/pending");
+      } else {
+        router.push("/dashboard");
+      }
+      return;
+    }
+  }, [user, userData]);
+
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSubmit = async () => {
-  if (!form.firmName || !form.phone) {
-    alert("Firm name and phone are required.");
-    return;
-  }
-  setSaving(true);
-  try {
-    const { saveFirm } = await import("@/lib/firestore");
-    await saveFirm(user.uid, form);
+    if (!form.firmName || !form.phone) {
+      alert("Firm name and phone are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { saveFirm } = await import("@/lib/firestore");
+      await saveFirm(user.uid, form);
 
-    // Send notification to admin with full firm details
-    await fetch("https://sovary-compliance.vercel.app/api/notify-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name:     user.displayName || user.email,
-        email:    user.email,
-        firmName: form.firmName,
-        phone:    form.phone,
-        city:     form.city,
-        gst:      form.gst,
-      }),
-    });
+      // Send notification to admin
+      await fetch("https://sovary-compliance.vercel.app/api/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:     user.displayName || user.email,
+          email:    user.email,
+          firmName: form.firmName,
+          phone:    form.phone,
+          city:     form.city,
+          gst:      form.gst,
+        }),
+      });
 
-  } catch (e) {
-    console.log("Error:", e.message);
-  }
+    } catch (e) {
+      console.log("Error:", e.message);
+    }
 
-  // Go to pending page NOT dashboard
-  router.push("/pending");
-  setSaving(false);
-};
+    router.push("/pending");
+    setSaving(false);
+  };
 
   const inputStyle = {
     width: "100%", background: "#1a2214",
@@ -70,6 +91,22 @@ export default function OnboardingPage() {
       display: "flex", alignItems: "center",
       justifyContent: "center", padding: 20,
     }}>
+
+      {/* ✅ Logout button */}
+      <button
+        onClick={async () => { await logout(); router.push("/login"); }}
+        style={{
+          position: "fixed", top: 20, right: 20,
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "#6b7a63", padding: "8px 16px",
+          borderRadius: 8, cursor: "pointer",
+          fontSize: 12, fontFamily: "Inter, sans-serif",
+        }}
+      >
+        Sign Out
+      </button>
+
       <div style={{ maxWidth: 560, width: "100%" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{
