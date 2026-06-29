@@ -7,24 +7,29 @@ export default function OnboardingPage() {
   const { user, userData, logout } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState({
     firmName: "", address: "", city: "",
     state: "", phone: "", email: "",
     gst: "", pan: "", whatsapp: ""
   });
 
-  // ✅ Redirect checks
+  // Fix hydration error
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Redirect checks
+  useEffect(() => {
+    if (!mounted) return;
     if (!user) {
       router.push("/login");
       return;
     }
-    // Admin should never see onboarding
     if (userData?.role === "admin") {
       router.push("/dashboard");
       return;
     }
-    // Already onboarded → go to pending or dashboard
     if (userData?.onboarded) {
       if (userData?.status === "pending") {
         router.push("/pending");
@@ -33,7 +38,7 @@ export default function OnboardingPage() {
       }
       return;
     }
-  }, [user, userData]);
+  }, [user, userData, mounted]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -47,7 +52,6 @@ export default function OnboardingPage() {
       const { saveFirm } = await import("@/lib/firestore");
       await saveFirm(user.uid, form);
 
-      // Send notification to admin
       await fetch("https://sovary-compliance.vercel.app/api/notify-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -68,6 +72,9 @@ export default function OnboardingPage() {
     router.push("/pending");
     setSaving(false);
   };
+
+  // Don't render until mounted
+  if (!mounted) return null;
 
   const inputStyle = {
     width: "100%", background: "#1a2214",
@@ -92,7 +99,7 @@ export default function OnboardingPage() {
       justifyContent: "center", padding: 20,
     }}>
 
-      {/* ✅ Logout button */}
+      {/* Sign Out button */}
       <button
         onClick={async () => { await logout(); router.push("/login"); }}
         style={{
@@ -102,6 +109,7 @@ export default function OnboardingPage() {
           color: "#6b7a63", padding: "8px 16px",
           borderRadius: 8, cursor: "pointer",
           fontSize: 12, fontFamily: "Inter, sans-serif",
+          zIndex: 100,
         }}
       >
         Sign Out

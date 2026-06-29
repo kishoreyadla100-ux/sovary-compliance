@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import { Spinner } from "./ui";
+import Link from "next/link";
 
 export default function AppShell({ children }) {
   const { user, userData, loading } = useAuth();
@@ -11,29 +12,36 @@ export default function AppShell({ children }) {
   const [firm, setFirm] = useState(null);
 
   useEffect(() => {
-    if (!loading) {
-      // Not logged in → go to login
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-      // Pending approval → go to pending
-      if (userData?.status === "pending") {
-        router.push("/pending");
-        return;
-      }
-      // Not onboarded → go to onboarding
-      if (userData?.role === "ca" && !userData?.onboarded) {
-        router.push("/onboarding");
-        return;
-      }
-      // Trial expired → go to pricing
-      if (userData?.status === "expired" && userData?.role !== "admin") {
-        router.push("/pricing");
-        return;
-      }
+    if (loading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
     }
-  }, [user, userData, loading]);
+
+    const isAdmin = user.email === "kishoreyadla100@gmail.com" || userData?.role === "admin";
+
+    if (isAdmin) {
+      return;
+    }
+
+    if (!userData) return;
+
+    if (userData.status === "pending") {
+      router.push("/pending");
+      return;
+    }
+
+    if (!userData.onboarded) {
+      router.push("/onboarding");
+      return;
+    }
+
+    if (userData.status === "expired") {
+      router.push("/pricing");
+      return;
+    }
+  }, [user, userData, loading, router]);
 
   useEffect(() => {
     if (user) {
@@ -45,53 +53,67 @@ export default function AppShell({ children }) {
     }
   }, [user]);
 
-  // Show spinner while loading
-  if (loading || !user || !userData) {
+  if (loading || !user) {
     return (
       <div style={{
-        minHeight: "100vh", background: "var(--bg)",
-        display: "flex", alignItems: "center", justifyContent: "center"
+        minHeight: "100vh",
+        background: "var(--bg)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
       }}>
         <Spinner size={32} />
       </div>
     );
   }
 
-  // Block pending users
-  if (userData?.status === "pending") return null;
+  const isAdmin = user.email === "kishoreyadla100@gmail.com" || userData?.role === "admin";
 
-  // Block unonboarded users
-  if (userData?.role === "ca" && !userData?.onboarded) return null;
+  if (!isAdmin && userData?.status === "pending") {
+    return null;
+  }
 
-  // Trial expiry check
-  const isExpired = userData?.status === "expired" ||
+  if (!isAdmin && !userData?.onboarded) {
+    return null;
+  }
+
+  const isExpired = !isAdmin && (
+    userData?.status === "expired" ||
     (userData?.status === "trial" && userData?.trialEnd &&
       new Date() > new Date(
         userData.trialEnd?.seconds
           ? userData.trialEnd.seconds * 1000
           : userData.trialEnd
-      ));
+      ))
+  );
 
-  // Block expired users
-  if (isExpired && userData?.role !== "admin") return null;
+  if (isExpired) {
+    return null;
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
       <Sidebar firm={firm} />
       <main style={{
-        flex: 1, marginLeft: 220, minHeight: "100vh",
+        flex: 1,
+        marginLeft: 220,
+        minHeight: "100vh",
         padding: "32px 32px 80px",
         maxWidth: "calc(100vw - 220px)"
       }} className="main-content">
 
-        {/* Trial expired banner */}
-        {isExpired && userData?.role !== "admin" && (
+        {isExpired && (
           <div style={{
             background: "rgba(224,92,92,0.08)",
             border: "1px solid rgba(224,92,92,0.3)",
-            borderRadius: 10, padding: "14px 18px", marginBottom: 20,
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", flexWrap: "wrap", gap: 10,
+            borderRadius: 10,
+            padding: "14px 18px",
+            marginBottom: 20,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 10,
           }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--red)" }}>
@@ -101,14 +123,22 @@ export default function AppShell({ children }) {
                 Your 3-week free trial has ended. Upgrade to continue.
               </div>
             </div>
-            <a href="mailto:kishoreyadla100@gmail.com?subject=SOVARY Upgrade Request"
+            <Link
+              href="/pricing"
               style={{
-                background: "var(--accent)", color: "#0c0f0a",
-                borderRadius: 7, padding: "8px 16px",
-                fontSize: 12, fontWeight: 600, textDecoration: "none",
-              }}>
+                background: "var(--accent)",
+                color: "#0c0f0a",
+                borderRadius: 7,
+                padding: "8px 16px",
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: "none",
+                cursor: "pointer",
+                display: "inline-block",
+              }}
+            >
               Upgrade ₹1,999/mo
-            </a>
+            </Link>
           </div>
         )}
 
